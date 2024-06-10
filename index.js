@@ -6,12 +6,14 @@ const bcrypt = require("bcrypt");
 require("dotenv").config();
 
 const app = express();
+
 const pool = new Pool({
   user: process.env.DB_USER,
   host: process.env.DB_HOST,
   database: process.env.DB_NAME,
   password: process.env.DB_PASSWORD,
   port: process.env.DB_PORT,
+  ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : false,
 });
 
 app.use(bodyParser.json());
@@ -126,5 +128,4 @@ app.delete("/incidents/:id", async (req, res) => {
 
 app.listen(3000, () => {
   console.log("Server is running on port 3000");
-  console.log(process.env.DB_HOST);
 });
