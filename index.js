@@ -74,10 +74,15 @@ app.post("/incidents", async (req, res) => {
 app.get("/incidents", async (req, res) => {
   const { subject } = req.query;
   try {
-    const result = await pool.query(
-      "SELECT * FROM incidents WHERE subject ILIKE $1",
-      [`%${subject}%`]
-    );
+    let result;
+    if (subject) {
+      result = await pool.query(
+        "SELECT * FROM incidents WHERE subject ILIKE $1",
+        [`%${subject}%`]
+      );
+    } else {
+      result = await pool.query("SELECT * FROM incidents");
+    }
     res.status(200).json(result.rows);
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
