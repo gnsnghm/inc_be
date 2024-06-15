@@ -12,7 +12,7 @@ CREATE TABLE incidents (
     occurrence_date DATE NOT NULL,
     content TEXT NOT NULL,
     threat_type VARCHAR(255) NOT NULL,
-    status VARCHAR(255) NOT NULL,
+    status_id INTEGER REFERENCES status(id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -23,3 +23,9 @@ CREATE TABLE incident_updates (
     update_content TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE status (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL
+);
+INSERT INTO status (name) VALUES ('未対応'), ('対応中'), ('完了');
