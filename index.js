@@ -19,6 +19,55 @@ const pool = new Pool({
 app.use(bodyParser.json());
 app.use(cors());
 
+// 初期化用のSQLクエリ
+const initQueries = `
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(255) UNIQUE NOT NULL,
+    username VARCHAR(255) NOT NULL,
+    password VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS status (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) UNIQUE NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS incidents (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    subject VARCHAR(255) NOT NULL,
+    occurrence_date DATE NOT NULL,
+    content TEXT NOT NULL,
+    threat_type VARCHAR(255) NOT NULL,
+    status_id INTEGER NOT NULL REFERENCES status(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS incident_updates (
+    id SERIAL PRIMARY KEY,
+    incident_id INTEGER NOT NULL REFERENCES incidents(id) ON DELETE CASCADE,
+    update_content TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO status (name) VALUES ('Open') ON CONFLICT (name) DO NOTHING;
+INSERT INTO status (name) VALUES ('In Progress') ON CONFLICT (name) DO NOTHING;
+INSERT INTO status (name) VALUES ('Closed') ON CONFLICT (name) DO NOTHING;
+`;
+
+app.post("/initialize", async (req, res) => {
+  try {
+    await pool.query(initQueries);
+    res
+      .status(200)
+      .json({ success: true, message: "Database initialized successfully" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 app.post("/register", async (req, res) => {
   const { userId, username, password } = req.body;
   try {
@@ -74,13 +123,21 @@ app.post("/incidents", async (req, res) => {
 app.get("/incidents", async (req, res) => {
   const { subject } = req.query;
   try {
-    const result = await pool.query(
-      `SELECT incidents.*, status.name as status
-       FROM incidents
-       JOIN status ON incidents.status_id = status.id
-       WHERE subject ILIKE $1`,
-      [`%${subject}%`]
-    );
+    let query;
+    let values;
+    if (subject) {
+      query = `SELECT incidents.*, status.name as status
+               FROM incidents
+               JOIN status ON incidents.status_id = status.id
+               WHERE subject ILIKE $1`;
+      values = [`%${subject}%`];
+    } else {
+      query = `SELECT incidents.*, status.name as status
+               FROM incidents
+               JOIN status ON incidents.status_id = status.id`;
+      values = [];
+    }
+    const result = await pool.query(query, values);
     res.status(200).json(result.rows);
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
